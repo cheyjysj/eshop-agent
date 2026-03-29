@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+python-dotenv
+langgraph
+langchain-openai
+langchain-core
+sqlalchemy
+streamlit
+requests
+sentence-transformers
+chromadb
+jieba
+rank-bm25
+numpy
