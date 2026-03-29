@@ -6,7 +6,7 @@ from langgraph.prebuilt import create_react_agent
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
-from langchain.tools import tool
+from langchain_core.tools import tool
 
 # ================= 定义一个简单的推荐工具（规则匹配） =================
 @tool
