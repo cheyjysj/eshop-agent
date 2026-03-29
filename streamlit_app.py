@@ -1,65 +1,52 @@
 # streamlit_app.py
 import os
-import sys
-import sqlite3
 import streamlit as st
 from dotenv import load_dotenv
 from langgraph.prebuilt import create_react_agent
-from langgraph.checkpoint.sqlite import SqliteSaver
+from langgraph.checkpoint.memory import InMemorySaver
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
+from langchain.tools import tool
 
-# 确保能导入模块
-sys.path.append(os.path.dirname(__file__))
-from knowledge_base.hybrid_retriever import HybridRetriever
-from agent.tools import KnowledgeBaseTool, RecommendTool
-
-load_dotenv()
-
-# ================= 初始化 Agent（使用缓存，避免重复加载） =================
-@st.cache_resource
-def get_agent():
-    # 1. 检索器
-    CHROMA_PERSIST_DIR = "./chroma_db_rag"
-    COLLECTION_NAME = "Eshopping_rag_collection"
-    # 注意：部署时向量库可能不存在，需要处理（见下文）
-    if os.path.exists(CHROMA_PERSIST_DIR):
-        retriever = HybridRetriever(CHROMA_PERSIST_DIR, COLLECTION_NAME, use_rerank=True)
-        tools = [KnowledgeBaseTool(retriever), RecommendTool()]
+# ================= 定义一个简单的推荐工具（规则匹配） =================
+@tool
+def recommend(query: str) -> str:
+    """根据用户需求推荐商品"""
+    if "耳机" in query:
+        return "根据您的偏好，推荐：\n1. 索尼 WH-1000XM5 降噪耳机\n2. 苹果 AirPods Pro 2\n3. 小米 Buds 4 Pro"
+    elif "儿童" in query or "字典" in query:
+        return "根据您的偏好，推荐：\n1. 猜猜我有多爱你 绘本\n2. 不一样的卡梅拉 系列\n3. 神奇校车 科普绘本"
     else:
-        # 如果没有向量库，只使用推荐工具
-        tools = [RecommendTool()]
+        return "根据当前热门商品，推荐：\n1. 华为 MateBook X Pro\n2. 戴森吸尘器 V15\n3. 乐高 创意百变系列"
 
-    # 2. LLM
-    api_key = os.getenv("DEEPSEEK_API_KEY")
-    if not api_key:
-        st.error("请在 Streamlit Cloud 的 Secrets 中设置 DEEPSEEK_API_KEY")
-        st.stop()
-    model = ChatOpenAI(
-        model="deepseek-chat",
-        base_url="https://api.deepseek.com/v1",
-        api_key=api_key,
-        temperature=0.7,
-        max_tokens=1024,
-    )
+tools = [recommend]
 
-    # 3. 系统提示
-    system_prompt = """你是一个智能电商客服助手..."""
+# ================= 配置 LLM =================
+load_dotenv()
+api_key = os.getenv("DEEPSEEK_API_KEY")
+if not api_key:
+    st.error("请在 Streamlit Cloud 的 Secrets 中设置 DEEPSEEK_API_KEY")
+    st.stop()
 
-    # 4. 检查点
-    conn = sqlite3.connect("checkpoints.db", check_same_thread=False)
-    checkpointer = SqliteSaver(conn)
+model = ChatOpenAI(
+    model="deepseek-chat",
+    base_url="https://api.deepseek.com/v1",
+    api_key=api_key,
+    temperature=0.7,
+    max_tokens=1024,
+)
 
-    # 5. 创建 Agent
-    agent = create_react_agent(
-        model=model,
-        tools=tools,
-        prompt=system_prompt,
-        checkpointer=checkpointer,
-    )
-    return agent, conn
+# ================= 系统提示 =================
+system_prompt = """你是一个智能电商客服助手，根据用户需求调用推荐工具。只回答推荐相关的内容。"""
 
-agent, conn = get_agent()
+# ================= 创建 Agent（使用内存检查点）=================
+checkpointer = InMemorySaver()
+agent = create_react_agent(
+    model=model,
+    tools=tools,
+    prompt=system_prompt,
+    checkpointer=checkpointer,
+)
 
 # ================= Streamlit UI =================
 st.set_page_config(page_title="电商客服助手", page_icon="🤖")
