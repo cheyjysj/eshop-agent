@@ -5,3 +5,7 @@ langchain-core
 python-dotenv
 pinecone
 requests
+sentence-transformers   # 仅本地模式需要，但保留无妨
+chromadb
+jieba
+rank-bm25
