@@ -1,7 +1,12 @@
-streamlit
+fastapi
+uvicorn
+python-dotenv
 langgraph
 langchain-openai
 langchain-core
-python-dotenv
-pinecone
+sqlalchemy
+sentence-transformers
+chromadb
+jieba
+streamlit
 requests
