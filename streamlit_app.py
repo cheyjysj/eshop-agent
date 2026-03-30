@@ -74,8 +74,16 @@ def search_products(query: str) -> str:
             top_k=3,                 # 返回最相关的3个结果
             include_metadata=True
         )
-        if not results['matches']:
-            return "没有找到相关商品。"
+        if results['matches']:
+            output = ["已从商品知识库中找到以下相关信息："]
+            for match in results['matches']:
+                metadata = match['metadata']
+                text = metadata.get('text', '无描述')
+                score = match['score']
+                output.append(f"- {text[:150]}... (相关度：{score:.2f})")
+            return "\n".join(output)
+        else:
+            return "未找到相关商品，请尝试更具体的关键词。"
 
         # 3. 格式化输出
         output = []
@@ -101,10 +109,9 @@ model = ChatOpenAI(
 )
 
 # ================= 系统提示 =================
-system_prompt = """你是一个智能电商客服助手，你的任务是根据用户的问题，调用 search_products 工具来回答商品相关问题。
-如果用户询问商品详情、评分、推荐等，请使用该工具从知识库中检索信息。
-如果用户询问订单等非商品问题，请礼貌告知暂无法处理。
-回答时请结合检索结果，以友好、专业的语气回复。"""
+system_prompt = """你是一个智能电商客服助手。当用户询问任何商品信息（如推荐、评分、详情）时，**必须**调用 `search_products` 工具来获取答案。
+如果工具返回结果，请直接根据结果回复用户，不要自己编造信息。
+如果用户询问非商品问题（如订单），请礼貌说明暂时无法处理。"""
 
 # ================= 创建 Agent（使用内存检查点）=================
 checkpointer = InMemorySaver()
